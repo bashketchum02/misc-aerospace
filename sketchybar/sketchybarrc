@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+
+PLUGIN_DIR="$HOME/.config/sketchybar/plugins"
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+# B A R
+bar=(
+  height=40
+  position=top
+)
+
+sketchybar --bar "${bar[@]}"
+
+# D E F A U L T S
+default=(
+  padding_left=5
+  padding_right=5
+  icon.font="VictorMono Nerd Font:Bold:17.0"
+  label.font="VictorMono Nerd Font:Bold:17.0"
+  icon.color=0xffffffff
+  label.color=0xffffffff
+  icon.align=center
+  label.align=center
+  icon.y_offset=1
+  label.y_offset=1
+  icon.padding_left=5
+  icon.padding_right=5
+  label.padding_left=5
+  label.padding_right=5
+  background.height=24
+  background.corner_radius=0
+)
+sketchybar --default "${default[@]}"
+
+# R E T R O   P A L E T T E + S H A R P   B O X E S   W I T H   S H A D O W
+retro_shadow=(
+  background.shadow.drawing=on
+  background.shadow.color=0x99000000
+  background.shadow.angle=45
+  background.shadow.distance=2
+)
+
+# A E R O S P A C E
+sketchybar --add event aerospace_workspace_change
+# one retro color per workspace, cycled
+space_colors=(
+  0xffea6962 0xffe78a4e 0xffd8a657 0xffa9b665 0xff7daea3
+  0xff89b482 0xffd3869b 0xffbf6b3f 0xffc57b57
+)
+for sid in 1 2 3 4 5 6 7 8 9; do
+    color=${space_colors[$((sid - 1))]}
+    sketchybar --add item space.$sid left \
+        --set space.$sid \
+        background.color=$color \
+        background.corner_radius=0 \
+        background.border_width=1 \
+        background.border_color=0xff141414 \
+        background.height=24 \
+        icon.drawing=off \
+        label="$sid" \
+        label.color=0xff141414 \
+        label.padding_left=6 \
+        label.padding_right=6 \
+        "${retro_shadow[@]}" \
+        click_script="aerospace workspace $sid"
+done
+
+# Single hidden listener runs the sync script (avoids 9 concurrent copies racing)
+sketchybar --add item aerospace_helper left \
+    --set aerospace_helper drawing=off script="$PLUGIN_DIR/aerospace.sh" \
+    --subscribe aerospace_helper aerospace_workspace_change space_windows_change space_change system_woke
+
+# S E P E R A T O R
+sketchybar --add item chevron left \
+    --set chevron icon= label.drawing=off \
+    --add item front_app left \
+    --set front_app icon.drawing=off script="$PLUGIN_DIR/front_app.sh" \
+    background.color=0xff3d3d3d \
+    background.corner_radius=0 \
+    label.color=0xffd4be98 \
+    "${retro_shadow[@]}" \
+    --subscribe front_app front_app_switched
+
+# B A T T E R Y  V O L U M E  C A L E N D A R  C L O C K
+sketchybar --add item battery right \
+    --set battery update_freq=120 script="$PLUGIN_DIR/battery.sh" \
+    background.color=0xffa9b665 \
+    label.color=0xff141414 \
+    icon.color=0xff141414 \
+    "${retro_shadow[@]}" \
+    --subscribe battery system_woke power_source_change \
+    --add item volume right \
+    --set volume script="$PLUGIN_DIR/volume.sh" \
+    background.color=0xff7daea3 \
+    label.color=0xff141414 \
+    icon.color=0xff141414 \
+    "${retro_shadow[@]}" \
+    --subscribe volume volume_change \
+    --add item calendar_right right \
+    --set calendar_right icon=󰃭 script="$PLUGIN_DIR/calendar.sh" update_freq=60 \
+    background.color=0xff89b482 \
+    label.color=0xff141414 \
+    icon.color=0xff141414 \
+    "${retro_shadow[@]}" \
+    --subscribe calendar_right system_woke \
+    --add item clock right \
+    --set clock update_freq=10 icon=󰥔 script="$PLUGIN_DIR/clock.sh" \
+    background.color=0xffd8a657 \
+    label.color=0xff141414 \
+    icon.color=0xff141414 \
+    "${retro_shadow[@]}"
+
+sketchybar --update
